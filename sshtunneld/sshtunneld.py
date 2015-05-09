@@ -6,6 +6,7 @@ import os
 import sys
 import select
 import signal
+import time
 
 
 class sshTunneld(object):
@@ -69,11 +70,12 @@ class sshTunneld(object):
             os._exit(1)
         else:
             os.waitpid(pid, 0)
+            self._sock = self.new_connection()
             self._child_pid = self.get_sshtunnel_pid()
             self.listen()
 
     def stop(self):
-        self._sock.close()
+        self.close_connection()
         if self._child_pid == 0:
             return
         try:
@@ -104,16 +106,26 @@ class sshTunneld(object):
         return int(pid) if pid else 0
 
     def listen(self):
-        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            self._sock.connect((self._lhost, self._lport))
-        except OSError:
-            self._sock.close()
-            os._exit(1)
         while True:
             r, _, _ = select.select([self._sock.fileno()], [], [])
             if r and self._sock.fileno() in set(r):
                 break
+
+    def new_connection(self, retry_num=5):
+        for i in range(retry_num):
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                sock.connect((self._lhost, self._lport))
+                return sock
+            except ConnectionError:
+                sock.close()
+                time.sleep(2**i)
+        print("can't connect to ssh tunnel")
+        os._exit(1)
+
+    def close_connection(self):
+        self._sock.close()
+        self._sock = None
 
 
 def main():
