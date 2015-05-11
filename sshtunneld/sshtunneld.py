@@ -23,6 +23,7 @@ class sshTunneld(object):
         self._rport = remote_port
         self._log = log_file or '/dev/null'
         self._fd = None
+        self.failure_num = 5
         addr = ':'.join((self._lhost, str(self._lport)))
         self._cmd_args = (cmd, '-qTfnN', '-D{0}'.format(addr),
                           '-p{0}'.format(str(self._rport)),
@@ -39,7 +40,6 @@ class sshTunneld(object):
             os._exit(1)
 
     def daemond(self):
-        self.check()
         pid = os.fork()
         if pid != 0:
             os._exit(1)
@@ -50,9 +50,11 @@ class sshTunneld(object):
             for ofd in stdfd:
                 os.dup2(ofd, self._fd)
                 os.close(ofd)
-        self.run()
 
-    def run(self):
+    def run(self, daemon=True):
+        self.check()
+        if daemon:
+            self.daemond()
         while True:
             self.start()
             self.stop()
@@ -70,7 +72,12 @@ class sshTunneld(object):
             os._exit(1)
         else:
             os.waitpid(pid, 0)
+            if self.failure_num == 0:
+                print('to many failure')
+                os._exit(1)
             self._sock = self.new_connection()
+            if self._sock is None:
+                return
             self._child_pid = self.get_sshtunnel_pid()
             self.listen()
 
@@ -112,7 +119,7 @@ class sshTunneld(object):
                 break
 
     def new_connection(self, retry_num=5):
-        for i in range(retry_num):
+        for i in range(retry_num + 1):
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 sock.connect((self._lhost, self._lport))
@@ -121,7 +128,7 @@ class sshTunneld(object):
                 sock.close()
                 time.sleep(2**i)
         print("can't connect to ssh tunnel")
-        os._exit(1)
+        self.failure_num -= 1
 
     def close_connection(self):
         self._sock.close()
@@ -130,7 +137,7 @@ class sshTunneld(object):
 
 def main():
     d1 = sshTunneld(user='anoproxy')
-    d1.daemond()
+    d1.run()
 
 
 if __name__ == '__main__':
