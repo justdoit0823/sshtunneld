@@ -1,10 +1,11 @@
 Metadata-Version: 1.0
-Name: sshtunnel
+Name: sshtunnel-monitor
 Version: 0.0dev
 Summary: A simple ssh tunnel monitoring server
-Home-page: UNKNOWN
+Home-page: https://github.com/justdoit0823/sshtunneld.git
 Author: Senbin Yu
 Author-email: justdoit920823@gmail.com
-License: UNKNOWN
+License: GPL
 Description: UNKNOWN
+Keywords: ssh tunnel,sock proxy,monitor
 Platform: UNKNOWN

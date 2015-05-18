@@ -3,17 +3,16 @@ import sys, os
 
 version = '0.0'
 
-setup(name='sshtunnel',
+setup(name='sshtunnel-monitor',
       version=version,
       description="A simple ssh tunnel monitoring server",
-      long_description="""\
-""",
+      long_description="",
       classifiers=[], # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
-      keywords='',
+      keywords=['ssh tunnel', 'sock proxy', 'monitor'],
       author='Senbin Yu',
       author_email='justdoit920823@gmail.com',
-      url='',
-      license='',
+      url='https://github.com/justdoit0823/sshtunneld.git',
+      license='GPL',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       include_package_data=True,
       zip_safe=False,
