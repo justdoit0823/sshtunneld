@@ -21,7 +21,7 @@ setup(name='sshtunnel',
           # -*- Extra requirements: -*-
       ],
       scripts=[''],
-      data_files=[('/etc', 'etc/sshtunneld.conf'),
+      data_files=[('/etc', ['etc/sshtunneld.conf']),
                   ('/etc/init.d', ['scripts/sshtunnel.sh'])],
       entry_points={
           'console_scripts': [
