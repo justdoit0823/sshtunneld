@@ -20,7 +20,7 @@ setup(name='sshtunnel',
       install_requires=[
           # -*- Extra requirements: -*-
       ],
-      scripts=[''],
+      scripts=[],
       data_files=[('/etc', ['etc/sshtunneld.conf']),
                   ('/etc/init.d', ['scripts/sshtunnel.sh'])],
       entry_points={
