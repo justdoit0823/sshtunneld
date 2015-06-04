@@ -31,7 +31,7 @@ class sshTunneld(object):
 
     def check(self):
         try:
-            self._fd = os.open(self._log, os.O_RDWR)
+            self._fd = os.open(self._log, os.O_WRONLY|os.O_APPEND)
         except PermissionError:
             print('open file {0} permission denied'.format(self._log))
             os._exit(1)
@@ -39,11 +39,15 @@ class sshTunneld(object):
             print('please run ssh-agent first')
             os._exit(1)
 
+    def log(self, message):
+        os.write(self._fd, message.encode())
+
     def daemond(self):
         pid = os.fork()
         if pid != 0:
             os._exit(1)
         if os.setsid() == -1:
+            self.log('setsid error\n')
             os._exit(1)
         if self._fd is not None:
             stdfd = [s.fileno() for s in [sys.stdin, sys.stdout, sys.stderr]]
@@ -64,16 +68,18 @@ class sshTunneld(object):
         try:
             pid = os.fork()
         except OSError:
+            self.log('start ssh tunnel error\n')
             os._exit(1)
         if pid == 0:
             # child process
             env = {'SSH_AUTH_SOCK': os.environ['SSH_AUTH_SOCK']}
             os.execve(self._cmd, self._cmd_args, env)
             os._exit(1)
+            self.log('must no come here\n')
         else:
             os.waitpid(pid, 0)
             if self.failure_num == 0:
-                print('to many failure')
+                self.log('to many failure\n')
                 os._exit(1)
             self._sock = self.new_connection()
             if self._sock is None:
@@ -88,6 +94,7 @@ class sshTunneld(object):
         try:
             os.kill(self._child_pid, signal.SIGKILL)
         except OSError:
+            self.log('kill ssh tunnel error\n')
             pass
 
     @staticmethod
@@ -127,7 +134,7 @@ class sshTunneld(object):
             except ConnectionError:
                 sock.close()
                 time.sleep(2**i)
-        print("can't connect to ssh tunnel")
+        self.log("can't connect to ssh tunnel\n")
         self.failure_num -= 1
 
     def close_connection(self):
@@ -136,7 +143,7 @@ class sshTunneld(object):
 
 
 def main():
-    d1 = sshTunneld(user='anoproxy')
+    d1 = sshTunneld(user='anoproxy', log_file="/tmp/ssh.log")
     d1.run()
 
 
