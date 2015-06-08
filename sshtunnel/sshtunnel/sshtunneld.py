@@ -39,21 +39,17 @@ class sshTunneld(object):
             print('please run ssh-agent first')
             sys.exit(1)
 
-    def log(self, message):
-        os.write(self._fd, message.encode())
-
     def daemond(self):
         pid = os.fork()
         if pid != 0:
             sys.exit(1)
         if os.setsid() == -1:
-            self.log('setsid error\n')
+            print('setsid error\n')
             sys.exit(1)
         if self._fd is not None:
             stdfd = [s.fileno() for s in [sys.stdin, sys.stdout, sys.stderr]]
             for ofd in stdfd:
-                os.dup2(ofd, self._fd)
-                os.close(ofd)
+                os.dup2(self._fd, ofd)
 
     def run(self, daemon=True):
         self.check()
@@ -68,18 +64,18 @@ class sshTunneld(object):
         try:
             pid = os.fork()
         except OSError:
-            self.log('start ssh tunnel error\n')
+            print('start ssh tunnel error\n')
             sys.exit(1)
         if pid == 0:
             # child process
             env = {'SSH_AUTH_SOCK': os.environ['SSH_AUTH_SOCK']}
             os.execve(self._cmd, self._cmd_args, env)
             sys.exit(1)
-            self.log('must no come here\n')
+            print('must no come here\n')
         else:
             os.waitpid(pid, 0)
             if self.failure_num == 0:
-                self.log('to many failure\n')
+                print('to many failure\n')
                 sys.exit(1)
             self._sock = self.new_connection()
             if self._sock is None:
@@ -94,7 +90,7 @@ class sshTunneld(object):
         try:
             os.kill(self._child_pid, signal.SIGKILL)
         except OSError:
-            self.log('kill ssh tunnel error\n')
+            print('kill ssh tunnel error\n')
             pass
 
     @staticmethod
@@ -120,6 +116,7 @@ class sshTunneld(object):
         return int(pid) if pid else 0
 
     def listen(self):
+        print('start ssh tunnel monitoring server.\n')
         while True:
             r, _, _ = select.select([self._sock.fileno()], [], [])
             if r and self._sock.fileno() in set(r):
@@ -134,7 +131,7 @@ class sshTunneld(object):
             except ConnectionError:
                 sock.close()
                 time.sleep(2**i)
-        self.log("can't connect to ssh tunnel\n")
+        print("can't connect to ssh tunnel\n")
         self.failure_num -= 1
 
     def close_connection(self):
