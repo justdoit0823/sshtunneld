@@ -21,7 +21,7 @@ class sshTunneld(object):
         self._lport = local_port
         self._rhost = remote_host
         self._rport = remote_port
-        self._log = log_file or '/dev/null'
+        self._log = log_file or os.devnull
         self._fd = None
         self.failure_num = 5
         addr = ':'.join((self._lhost, str(self._lport)))
@@ -34,10 +34,10 @@ class sshTunneld(object):
             self._fd = os.open(self._log, os.O_WRONLY|os.O_APPEND)
         except PermissionError:
             print('open file {0} permission denied'.format(self._log))
-            os._exit(1)
+            sys.exit(1)
         if 'SSH_AUTH_SOCK' not in os.environ:
             print('please run ssh-agent first')
-            os._exit(1)
+            sys.exit(1)
 
     def log(self, message):
         os.write(self._fd, message.encode())
@@ -45,10 +45,10 @@ class sshTunneld(object):
     def daemond(self):
         pid = os.fork()
         if pid != 0:
-            os._exit(1)
+            sys.exit(1)
         if os.setsid() == -1:
             self.log('setsid error\n')
-            os._exit(1)
+            sys.exit(1)
         if self._fd is not None:
             stdfd = [s.fileno() for s in [sys.stdin, sys.stdout, sys.stderr]]
             for ofd in stdfd:
@@ -62,25 +62,25 @@ class sshTunneld(object):
         while True:
             self.start()
             self.stop()
-        os._exit(1)
+        sys.exit(1)
 
     def start(self):
         try:
             pid = os.fork()
         except OSError:
             self.log('start ssh tunnel error\n')
-            os._exit(1)
+            sys.exit(1)
         if pid == 0:
             # child process
             env = {'SSH_AUTH_SOCK': os.environ['SSH_AUTH_SOCK']}
             os.execve(self._cmd, self._cmd_args, env)
-            os._exit(1)
+            sys.exit(1)
             self.log('must no come here\n')
         else:
             os.waitpid(pid, 0)
             if self.failure_num == 0:
                 self.log('to many failure\n')
-                os._exit(1)
+                sys.exit(1)
             self._sock = self.new_connection()
             if self._sock is None:
                 return
