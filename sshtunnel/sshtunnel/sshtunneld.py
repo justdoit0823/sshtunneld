@@ -44,7 +44,7 @@ class sshTunneld(object):
         if pid != 0:
             sys.exit(1)
         if os.setsid() == -1:
-            print('setsid error\n')
+            print('setsid error')
             sys.exit(1)
         if self._fd is not None:
             stdfd = [s.fileno() for s in [sys.stdin, sys.stdout, sys.stderr]]
@@ -64,18 +64,18 @@ class sshTunneld(object):
         try:
             pid = os.fork()
         except OSError:
-            print('start ssh tunnel error\n')
+            print('start ssh tunnel error')
             sys.exit(1)
         if pid == 0:
             # child process
             env = {'SSH_AUTH_SOCK': os.environ['SSH_AUTH_SOCK']}
             os.execve(self._cmd, self._cmd_args, env)
             sys.exit(1)
-            print('must no come here\n')
+            print('must no come here')
         else:
             os.waitpid(pid, 0)
             if self.failure_num == 0:
-                print('to many failure\n')
+                print('to many failure')
                 sys.exit(1)
             self._sock = self.new_connection()
             if self._sock is None:
@@ -90,7 +90,7 @@ class sshTunneld(object):
         try:
             os.kill(self._child_pid, signal.SIGKILL)
         except OSError:
-            print('kill ssh tunnel error\n')
+            print('kill ssh tunnel error')
             pass
 
     @staticmethod
@@ -116,7 +116,7 @@ class sshTunneld(object):
         return int(pid) if pid else 0
 
     def listen(self):
-        print('start ssh tunnel monitoring server.\n')
+        print('start ssh tunnel monitoring server.')
         while True:
             r, _, _ = select.select([self._sock.fileno()], [], [])
             if r and self._sock.fileno() in set(r):
@@ -131,13 +131,14 @@ class sshTunneld(object):
             except ConnectionError:
                 sock.close()
                 time.sleep(2**i)
-        print("can't connect to ssh tunnel\n")
+        print("can't connect to ssh tunnel")
         self.failure_num -= 1
 
     def close_connection(self):
-        self._sock.close()
-        self._sock = None
-
+        if self._sock:
+            self._sock.close()
+            self._sock = None
+        print('close connection to ssh tunnel')
 
 def main():
     d1 = sshTunneld(user='anoproxy', log_file="/tmp/ssh.log")
