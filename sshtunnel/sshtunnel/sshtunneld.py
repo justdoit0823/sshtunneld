@@ -31,7 +31,7 @@ class sshTunneld(object):
 
     def check(self):
         try:
-            self._fd = os.open(self._log, os.O_WRONLY|os.O_APPEND)
+            self._fd = os.open(self._log, os.O_WRONLY|os.O_APPEND|os.O_CREAT)
         except PermissionError:
             print('open file {0} permission denied'.format(self._log))
             sys.exit(1)
