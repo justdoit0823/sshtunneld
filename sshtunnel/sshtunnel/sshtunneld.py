@@ -88,10 +88,14 @@ class sshTunneld(object):
         if self._child_pid == 0:
             return
         try:
+            # check whether child process exists
+            os.kill(self._child_pid, 0)
+        except ProcessLookupError:
+            return
+        try:
             os.kill(self._child_pid, signal.SIGKILL)
         except OSError:
             print('kill ssh tunnel error')
-            pass
 
     @staticmethod
     def execute(cmd):
