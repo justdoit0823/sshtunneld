@@ -1,6 +1,6 @@
 Metadata-Version: 1.0
 Name: sshtunnel-monitor
-Version: 0.0dev
+Version: 0.0dev-r0
 Summary: A simple ssh tunnel monitoring server
 Home-page: https://github.com/justdoit0823/sshtunneld.git
 Author: Senbin Yu

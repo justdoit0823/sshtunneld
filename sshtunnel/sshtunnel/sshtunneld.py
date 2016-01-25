@@ -9,25 +9,51 @@ import signal
 import time
 
 
+class sshConfig:
+
+    cmd_template = '{cmd} -qTfnN -D{localhost}:{localport} -p{sshport} {user}@{host}'
+    defalt_config = {
+        'cmd': '/usr/bin/ssh', 'localhost': '0.0.0.0',
+        'localport': 8888, 'sshport': 22}
+
+    def __init__(self, config_file=None, **kwargs):
+        self.config = dict(self.defalt_config)
+        self.config.update(kwargs)
+        if config_file is not None:
+            self.init_from_file(config_file)
+
+    def init_from_file(self, config_file):
+        config_data = {}
+        self.config.update(config_data)
+
+    def get_sshtunnel_cmd(self):
+        return self.cmd_template.format(**self.config)
+
+    def get_sshtunnel_args(self):
+        config = self.config
+        cmd = config['cmd']
+        localhost = config['localhost']
+        localport = config['localport']
+        sshport = config['sshport']
+        user = config['user']
+        host = config['host']
+        cmd_args = (
+            cmd, '-qTfnN',
+            '-D{localhost}:{localport}'.format(
+                localhost=localhost, localport=localport),
+            '-p{0}'.format(sshport), '{0}@{1}'.format(user, host))
+        return cmd_args
+
+
 class sshTunneld(object):
 
-    def __init__(self, cmd='/usr/bin/ssh', user='justdoit',
-                 local_host='0.0.0.0', local_port=8888,
-                 remote_host='shareyou.net.cn', remote_port=22122,
-                 log_file=None):
-        self._cmd = cmd
-        self._user = user
-        self._lhost = local_host
-        self._lport = local_port
-        self._rhost = remote_host
-        self._rport = remote_port
+    def __init__(self, log_file=None, **kwargs):
+        self._config = sshConfig(**kwargs)
         self._log = log_file or os.devnull
         self._fd = None
+        self._child_pid = None
         self.failure_num = 5
-        addr = ':'.join((self._lhost, str(self._lport)))
-        self._cmd_args = (cmd, '-qTfnN', '-D{0}'.format(addr),
-                          '-p{0}'.format(str(self._rport)),
-                          '{0}@{1}'.format(self._user, self._rhost))
+        self._cmd_args = self._config.get_sshtunnel_args()
 
     def check(self):
         try:
@@ -69,7 +95,7 @@ class sshTunneld(object):
         if pid == 0:
             # child process
             env = {'SSH_AUTH_SOCK': os.environ['SSH_AUTH_SOCK']}
-            os.execve(self._cmd, self._cmd_args, env)
+            os.execve(self._cmd_args[0], self._cmd_args, env)
             sys.exit(1)
             print('must no come here')
         else:
@@ -85,7 +111,7 @@ class sshTunneld(object):
 
     def stop(self):
         self.close_connection()
-        if self._child_pid == 0:
+        if self._child_pid is None or self._child_pid == 0:
             return
         try:
             # check whether child process exists
@@ -113,10 +139,12 @@ class sshTunneld(object):
         return ''.join(chunk)
 
     def get_sshtunnel_pid(self):
-        cmd_str = ' '.join(self._cmd_args)
-        grep_str = ("ps aux|grep \"{0}\" | grep -v grep "
-                    "| awk '{{print $2}}'").format(cmd_str)
-        pid = self.execute(grep_str)
+        config = self._config.config
+        inet_info = '4TCP@{localhost}:{localport}'.format(
+            localhost=config['localhost'], localport=config['localport'])
+        cmd_str = "lsof -i{inet_info}|awk '/LISTEN/ {{print $2}}'".format(
+            inet_info=inet_info)
+        pid = self.execute(cmd_str)
         return int(pid) if pid else 0
 
     def listen(self):
@@ -127,10 +155,11 @@ class sshTunneld(object):
                 break
 
     def new_connection(self, retry_num=5):
+        config = self._config.config
         for i in range(retry_num + 1):
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
-                sock.connect((self._lhost, self._lport))
+                sock.connect((config['localhost'], config['localport']))
                 return sock
             except ConnectionError:
                 sock.close()
@@ -145,7 +174,9 @@ class sshTunneld(object):
         print('close connection to ssh tunnel')
 
 def main():
-    d1 = sshTunneld(user='anoproxy', log_file="/tmp/ssh.log")
+    d1 = sshTunneld(
+        user='anoproxy', log_file="/tmp/ssh.log", host='notesus.info',
+        sshport=22122)
     d1.run()
 
 
