@@ -47,12 +47,14 @@ class sshConfig:
 
 class sshTunneld(object):
 
+    max_failure_num = 5
+
     def __init__(self, log_file=None, **kwargs):
         self._config = sshConfig(**kwargs)
         self._log = log_file or os.devnull
         self._fd = None
         self._child_pid = None
-        self.failure_num = 5
+        self.failure_num = self.max_failure_num
         self._cmd_args = self._config.get_sshtunnel_args()
 
     def check(self):
@@ -160,6 +162,7 @@ class sshTunneld(object):
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 sock.connect((config['localhost'], config['localport']))
+                self.reset_failure_num()
                 return sock
             except ConnectionError:
                 sock.close()
@@ -172,6 +175,10 @@ class sshTunneld(object):
             self._sock.close()
             self._sock = None
         print('close connection to ssh tunnel')
+
+    def reset_failure_num(self):
+        self.failure_num = self.max_failure_num
+
 
 def main():
     d1 = sshTunneld(
