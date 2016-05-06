@@ -49,10 +49,12 @@ class sshTunneld(object):
 
     max_failure_num = 5
 
-    def __init__(self, log_file=None, **kwargs):
+    def __init__(self, log_file=None, pid_file=None, **kwargs):
         self._config = sshConfig(**kwargs)
         self._log = log_file or os.devnull
+        self._pidfile = pid_file
         self._fd = None
+        self._pidfd = None
         self._child_pid = None
         self.failure_num = self.max_failure_num
         self._cmd_args = self._config.get_sshtunnel_args()
@@ -63,6 +65,24 @@ class sshTunneld(object):
         except PermissionError:
             print('open file {0} permission denied'.format(self._log))
             sys.exit(1)
+
+        try:
+            self._pidfd = os.open(self._pidfile, os.O_RDWR|os.O_CREAT)
+        except PermissionError:
+            print('open file {0} permission denied'.format(self._log))
+            sys.exit(1)
+        else:
+            pid_str = os.read(self._pidfd, 1024)
+            pid = int(pid_str) if pid_str else 0
+            if pid:
+                try:
+                    # check whether child process exists
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    pass
+                else:
+                    sys.exit(0)
+
         if 'SSH_AUTH_SOCK' not in os.environ:
             print('please run ssh-agent first')
             sys.exit(1)
@@ -78,6 +98,11 @@ class sshTunneld(object):
             stdfd = [s.fileno() for s in [sys.stdin, sys.stdout, sys.stderr]]
             for ofd in stdfd:
                 os.dup2(self._fd, ofd)
+
+        if self._pidfd:
+            os.truncate(self._pidfd, 0)
+            os.write(self._pidfd, str(os.getpid()).encode())
+            os.close(self._pidfd)
 
     def run(self, daemon=True):
         self.check()
@@ -179,12 +204,54 @@ class sshTunneld(object):
     def reset_failure_num(self):
         self.failure_num = self.max_failure_num
 
+    def respawn(self):
+        pid = self.get_sshtunnel_pid()
+        if not pid:
+            return
+        try:
+            # check whether child process exists
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except OSError:
+            print('respawn error')
+
+
+def usage():
+    help_text = '''
+    sshtunnel subcommand
+
+    avaliable subcommand as followed:
+
+    start start sshtunnel monitor program
+
+    respawn respawn monitor worker program
+    '''
+
+    print(help_text)
+
 
 def main():
+    if len(sys.argv) >= 2:
+        command = sys.argv[1]
+    else:
+        command = 'start'
+
+    avaliable_commands = ('start', 'respawn')
+    if command not in avaliable_commands:
+        usage()
+        sys.exit(0)
+
     d1 = sshTunneld(
-        user='anoproxy', log_file="/tmp/ssh.log", host='notesus.info',
-        sshport=22122)
-    d1.run()
+        user='anoproxy', log_file='/tmp/ssh.log', host='notesus.info',
+        sshport=22122, pid_file='/tmp/sshtunnel.pid')
+
+    if command == 'start':
+        d1.run()
+    elif command == 'respawn':
+        d1.respawn()
 
 
 if __name__ == '__main__':
