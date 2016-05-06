@@ -12,19 +12,20 @@ install
 
 * open the terminal, and execute following command:
 
-$ git clone https://github.com/justdoit0823/sshtunneld.git
+		$ git clone https://github.com/justdoit0823/sshtunneld.git
 
-$ cd sshtunnel
+		$ cd sshtunnel
 
-$ sudo python setup.py install
+		$ sudo python setup.py install
 
 * use pip
 
-$ pip install sshtunnel-monitor
+		$ pip install sshtunnel-monitor
 
 
 run
 ===
 
-	$ sshtunnel
+	$ sshtunnel(start)
 
+	$ sshtunnel respawn(respawn worker program)
