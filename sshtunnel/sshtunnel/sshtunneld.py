@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
-
-import socket
+import click
 import os
-import sys
 import select
 import signal
+import socket
+import sys
 import time
 
 
@@ -233,25 +233,28 @@ def usage():
     print(help_text)
 
 
+@click.group(help='A simple ssh tunnel tool')
 def main():
-    if len(sys.argv) >= 2:
-        command = sys.argv[1]
-    else:
-        command = 'start'
 
-    avaliable_commands = ('start', 'respawn')
-    if command not in avaliable_commands:
-        usage()
-        sys.exit(0)
+    pass
 
-    d1 = sshTunneld(
+
+@main.command(name='start', help='start ssh tunnel daemon')
+def start():
+
+    tunnel = sshTunneld(
         user='anoproxy', log_file='/tmp/ssh.log', host='notesus.info',
         sshport=22122, pid_file='/tmp/sshtunnel.pid')
+    tunnel.run()
 
-    if command == 'start':
-        d1.run()
-    elif command == 'respawn':
-        d1.respawn()
+
+@main.command(name='spawn', help='respawn a new ssh tunnel')
+def spawn(name='spawn'):
+
+    tunnel = sshTunneld(
+        user='anoproxy', log_file='/tmp/ssh.log', host='notesus.info',
+        sshport=22122, pid_file='/tmp/sshtunnel.pid')
+    tunnel.respawn()
 
 
 if __name__ == '__main__':
