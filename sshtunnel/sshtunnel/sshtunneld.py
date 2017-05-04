@@ -41,8 +41,9 @@ class sshConfig:
             cmd, '-qTfnN',
             '-D{localhost}:{localport}'.format(
                 localhost=localhost, localport=localport),
-            '-p{0}'.format(sshport), '{0}@{1}'.format(user, host))
-        return cmd_args
+            '-p{0}'.format(sshport) if sshport else '',
+            '{0}@{1}'.format(user, host))
+        return tuple(filter(None, cmd_args))
 
 
 class sshTunneld(object):
@@ -191,7 +192,8 @@ class sshTunneld(object):
                 return sock
             except ConnectionError:
                 sock.close()
-                time.sleep(2**i)
+                time.sleep(2*i)
+
         print("can't connect to ssh tunnel")
         self.failure_num -= 1
 
@@ -219,20 +221,6 @@ class sshTunneld(object):
             print('respawn error')
 
 
-def usage():
-    help_text = '''
-    sshtunnel subcommand
-
-    avaliable subcommand as followed:
-
-    start start sshtunnel monitor program
-
-    respawn respawn monitor worker program
-    '''
-
-    print(help_text)
-
-
 @click.group(help='A simple ssh tunnel tool')
 def main():
 
@@ -240,20 +228,26 @@ def main():
 
 
 @main.command(name='start', help='start ssh tunnel daemon')
-def start():
+@click.argument('user')
+@click.argument('host')
+@click.argument('port', default='')
+def start(**kwargs):
 
     tunnel = sshTunneld(
-        user='anoproxy', log_file='/tmp/ssh.log', host='notesus.info',
-        sshport=22122, pid_file='/tmp/sshtunnel.pid')
+        user=kwargs['user'], log_file='/tmp/ssh.log', host=kwargs['host'],
+        sshport=kwargs['port'], pid_file='/tmp/sshtunnel.pid')
     tunnel.run()
 
 
 @main.command(name='spawn', help='respawn a new ssh tunnel')
-def spawn(name='spawn'):
+@click.argument('user')
+@click.argument('host')
+@click.argument('port', default='')
+def spawn(**kwargs):
 
     tunnel = sshTunneld(
-        user='anoproxy', log_file='/tmp/ssh.log', host='notesus.info',
-        sshport=22122, pid_file='/tmp/sshtunnel.pid')
+        user=kwargs['user'], log_file='/tmp/ssh.log', host=kwargs['host'],
+        sshport=kwargs['port'], pid_file='/tmp/sshtunnel.pid')
     tunnel.respawn()
 
 
